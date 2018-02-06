@@ -12,7 +12,84 @@ this file and include it in basic-server.js so that it actually works.
 
 **************************************************************/
 
+var url = require('url');
+
+
+var messages = {results: []};
+var messageId = 1;
+
+
 var requestHandler = function(request, response) {
+
+
+  // console.log('Serving request type ' + request.method + ' for url ' + request.url);
+
+  var urlPath = url.parse(request.url).pathname;
+  
+  var statusCode = 200; //success!
+
+ 
+  var headers = defaultCorsHeaders;
+
+  headers['Content-Type'] = 'text/plain';
+
+
+  response.writeHead(statusCode, headers);
+  
+  if(urlPath === '/classes/messages'){
+    if(request.method === 'POST'){
+      
+      handleSentData(request);
+
+      response.writeHead(201, headers);
+      response.end('success');
+
+    } else if (request.method === 'GET'){
+      
+      response.end(JSON.stringify(messages));
+
+    } else if (request.method === 'OPTIONS') {
+      response.end('you cool');
+    }
+  } else {
+    response.writeHead(404 , headers);
+    response.end('invalid path');
+  }
+   
+ 
+};
+
+
+var defaultCorsHeaders = {
+  'access-control-allow-origin': '*',
+  'access-control-allow-methods': 'GET, POST, PUT, DELETE, OPTIONS',
+  'access-control-allow-headers': 'content-type, accept',
+  'access-control-max-age': 10 // Seconds.
+};
+
+
+function handleSentData (request) {
+  var data = '';
+  request.on('data', function(chunk) {
+
+    data += chunk;
+  });
+  request.on('end', function() {
+    var message = JSON.parse(data);
+    
+    message.objectId = messageId;
+    messageId++;
+    message.createdAt = new Date();
+    console.log();
+    messages.results.push(message);
+    
+  });
+}
+exports.requestHandler = requestHandler;
+
+
+
+
   // Request and Response come from node's http module.
   //
   // They include information about both the incoming request, such as
@@ -27,33 +104,29 @@ var requestHandler = function(request, response) {
   // Adding more logging to your server can be an easy way to get passive
   // debugging help, but you should always be careful about leaving stray
   // console.logs in your code.
-  console.log('Serving request type ' + request.method + ' for url ' + request.url);
+  // http://parse.la.hackreactor.com/chatterbox/classes/messages`
 
-  // The outgoing status.
-  var statusCode = 200;
 
-  // See the note below about CORS headers.
-  var headers = defaultCorsHeaders;
 
   // Tell the client we are sending them plain text.
   //
   // You will need to change this if you are sending something
   // other than plain text, like JSON or HTML.
-  headers['Content-Type'] = 'text/plain';
+
+    // The outgoing status.
+
 
   // .writeHead() writes to the request line and headers of the response,
   // which includes the status and all headers.
-  response.writeHead(statusCode, headers);
 
-  // Make sure to always call response.end() - Node may not send
+    // Make sure to always call response.end() - Node may not send
   // anything back to the client until you do. The string you pass to
   // response.end() will be the body of the response - i.e. what shows
   // up in the browser.
   //
   // Calling .end "flushes" the response's internal buffer, forcing
   // node to actually send all the data over to the client.
-  response.end('Hello, World!');
-};
+
 
 // These headers will allow Cross-Origin Resource Sharing (CORS).
 // This code allows this server to talk to websites that
@@ -64,10 +137,3 @@ var requestHandler = function(request, response) {
 //
 // Another way to get around this restriction is to serve you chat
 // client from this domain by setting up static file serving.
-var defaultCorsHeaders = {
-  'access-control-allow-origin': '*',
-  'access-control-allow-methods': 'GET, POST, PUT, DELETE, OPTIONS',
-  'access-control-allow-headers': 'content-type, accept',
-  'access-control-max-age': 10 // Seconds.
-};
-
